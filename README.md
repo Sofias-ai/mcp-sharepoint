@@ -4,6 +4,10 @@
 
 A lightweight MCP Server for seamless integration with Microsoft SharePoint, enabling MCP clients to interact with documents, folders and other SharePoint resources. Developed by [sofias tech](https://github.com/sofias/mcp-sharepoint/).
 
+<a href="https://glama.ai/mcp/servers/@Sofias-ai/mcp-sharepoint">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Sofias-ai/mcp-sharepoint/badge" alt="SharePoint Server MCP server" />
+</a>
+
 ## Features
 
 This server provides a clean interface to SharePoint resources through the Model Context Protocol (MCP), with optimized operations for document management.
