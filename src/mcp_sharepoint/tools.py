@@ -2,7 +2,7 @@ import base64, os
 from functools import wraps
 from typing import Optional, Dict, Any
 from .common import logger, mcp, SHP_DOC_LIBRARY, sp_context
-from .resources import list_folders, list_documents, get_document_content
+from .resources import list_folders, list_documents, get_document_content, get_folder_tree
 
 # Helper functions to reduce code duplication
 def _get_path(folder: str = "", file: Optional[str] = None) -> str:
@@ -39,6 +39,11 @@ async def list_folders_tool(parent_folder: Optional[str] = None):
 async def list_documents_tool(folder_name: str):
     """List all documents in a specified SharePoint folder"""
     return list_documents(folder_name)
+
+@mcp.tool(name="Get_SharePoint_Tree", description="Get a recursive tree view of a SharePoint folder")
+async def get_sharepoint_tree_tool(parent_folder: Optional[str] = None):
+    """Get a recursive tree view of a SharePoint folder."""
+    return get_folder_tree(parent_folder)
 
 @mcp.tool(name="Get_Document_Content", description="Get content of a document in SharePoint")
 async def get_document_content_tool(folder_name: str, file_name: str):
