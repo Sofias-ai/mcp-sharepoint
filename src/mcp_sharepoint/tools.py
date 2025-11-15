@@ -178,3 +178,57 @@ async def delete_folder(folder_path: str):
 async def download_document_tool(folder_name: str, file_name: str, local_path: str):
     """Download a document from SharePoint to local filesystem with fallback support"""
     return download_document(folder_name, file_name, local_path)
+
+@mcp.tool(name="Update_File_Metadata", description="Update metadata fields for a SharePoint file")
+@_handle_sp_operation
+async def update_file_metadata(folder_name: str, file_name: str, metadata: dict):
+    """Update metadata fields for a SharePoint file"""
+    file_path = _get_path(folder_name, file_name)
+    file_obj = sp_context.web.get_file_by_server_relative_url(file_path)
+    list_item = file_obj.listItemAllFields
+    
+    # Convert values to strings
+    form_values = {}
+    for key, value in metadata.items():
+        if value is not None:
+            if isinstance(value, bool):
+                form_values[key] = "1" if value else "0"
+            elif isinstance(value, list):
+                form_values[key] = ";".join(str(v) for v in value)
+            else:
+                form_values[key] = str(value)
+    
+    if not form_values:
+        return {"success": True, "message": "No fields to update"}
+    
+    list_item.validate_update_list_item(form_values, new_document_update=True)
+    sp_context.execute_query()
+    
+    return {"success": True, "message": f"Updated {len(form_values)} fields for {file_name}"}
+
+@mcp.tool(name="Get_File_Metadata", description="Get metadata fields from a SharePoint file")
+@_handle_sp_operation
+async def get_file_metadata(folder_name: str, file_name: str):
+    """Get metadata fields from a SharePoint file"""
+    file_path = _get_path(folder_name, file_name)
+    
+    # Get the file
+    file_obj = sp_context.web.get_file_by_server_relative_url(file_path)
+    
+    # Access list item directly
+    list_item = file_obj.listItemAllFields
+    sp_context.load(list_item)
+    sp_context.execute_query()
+    
+    # Extract metadata
+    metadata = {}
+    for prop_name, prop_value in list_item.properties.items():
+        if prop_value is not None:
+            metadata[prop_name] = str(prop_value)
+    
+    return {
+        "success": True,
+        "message": f"Metadata retrieved for {file_name}",
+        "metadata": metadata,
+        "file": {"name": file_name, "path": file_path}
+    }
