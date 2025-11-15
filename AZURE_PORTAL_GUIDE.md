@@ -1,98 +1,161 @@
+# Guide to Configuring SharePoint MCP Application
 
-# Guide to Registering an Application in Azure Portal and Configuring SharePoint Permissions
+> **⚠️ Attention:** This guide requires Azure AD administrator permissions. Ensure you have the necessary approvals before proceeding.
 
-> **⚠️ Attention:** Many of the steps in this guide may require the permissions of your organization’s owner or an Azure AD administrator. Please follow the instructions carefully and ensure you have the necessary approvals before proceeding.
-
-## 1. Registering the Application in Azure
+## 1. Register the Application in Microsoft Entra (Azure AD)
 
 Access the Azure portal: [https://portal.azure.com](https://portal.azure.com)
 
-To register your application, follow these steps:
+### Steps:
 
-1. Navigate to **App registrations** → **New registration**.
-2. Provide a descriptive name for your application.
-3. Specify the supported account type (e.g., **Accounts in this organizational directory only**).
-4. Configure the redirect URI, if applicable.
-5. Click **Register** to complete the registration process.
+1. Navigate to **Microsoft Entra ID** (formerly Azure Active Directory)
+2. Go to **App registrations** → **New registration**
+3. Enter a descriptive name (e.g., `mcp-sharepoint-app`)
+4. Select **Accounts in this organizational directory only**
+5. Leave **Redirect URI** empty (not needed for service accounts)
+6. Click **Register**
 
----
-
-## 2. Configuring API Permissions for SharePoint
-
-### Microsoft Graph Permissions
-
-| Permission Name | Type      | Description                                | Admin Consent Required | Status    |
-| --------------- | --------- | ------------------------------------------ | -------------------- | --------- |
-| User.Read       | Delegated | Sign in and read the user profile          | No                   | Granted   |
-
-### SharePoint Permissions
-
-| Permission Name       | Type        | Description                                                            | Admin Consent Required | Status    |
-| -------------------- | ----------- | ---------------------------------------------------------------------- | -------------------- | --------- |
-| Sites.FullControl.All | Application | Full control over all site collections                                  | Yes                  | Granted   |
-| Sites.Manage.All      | Application | Read and write items and lists across all site collections             | Yes                  | Granted   |
-| Sites.Read.All        | Application | Read items across all site collections                                  | Yes                  | Granted   |
-| Sites.ReadWrite.All   | Application | Read and write items across all site collections                        | Yes                  | Granted   |
-
-**Important Notes:**
-
-1. All **Application** type permissions require consent from an Azure AD administrator.  
-2. The `User.Read` permission is **delegated**, meaning it executes on behalf of the signed-in user.  
-3. Ensure that these permissions are granted **prior to executing the application** to avoid authorization errors when accessing SharePoint.
+### Save these values:
+- **Application (client) ID** → This is your `SHP_ID_APP`
+- **Directory (tenant) ID** → This is your `SHP_TENANT_ID`
 
 ---
 
-## 3. Exposing the API and Defining Scopes
+## 2. Create Client Secret
 
-Follow these steps to expose your API and configure scopes:
-
-### Step 1: Access the Registered Application
-
-1. Open the **Azure** portal.  
-2. Navigate to **App registrations**.  
-3. Select the target application (e.g., `mcp-sharepoint`).  
-
-### Step 2: Expose an API
-
-1. In the left-hand menu, select **Expose an API**.  
-2. Confirm the API URI is configured (e.g., `api://xxxxxx-xxx-xxxxx-xxxxxx`).
-
-### Step 3: Add a Scope
-
-1. Click **+ Add a scope**.  
-2. If this is your first scope, confirm the API URI prefix.  
-3. Complete the form to define the new scope. The specific details are typically not critical.  
-4. Click **Add scope** to save.
-
-### Step 4: Authorize Client Applications (Optional)
-
-1. To allow another application to consume your API, register it under **Authorized client applications**:  
-   - Click **+ Add a client application**.  
-   - Select the registered client application.  
-   - Assign the permitted scopes.
+1. In your registered app, go to **Certificates & secrets**
+2. Click **+ New client secret**
+3. Add a description (e.g., "MCP SharePoint Secret")
+4. Choose expiration (recommended: 24 months)
+5. Click **Add**
+6. **⚠️ IMPORTANT:** Copy the **Value** immediately → This is your `SHP_ID_APP_SECRET`
+   - You won't be able to see it again!
 
 ---
 
-## 4. Configuring Permissions in SharePoint
+## 3. Configure API Permissions
 
-To enable the application to access SharePoint, register the required permissions using the SharePoint AppInv form. This method is valid until **April 2026**.
+1. In your app, go to **API permissions**
+2. Click **+ Add a permission**
+3. Select **SharePoint**
+4. Select **Application permissions**
+5. Choose **Sites.Selected** (recommended for security) OR **Sites.ReadWrite.All** (for all sites)
+6. Click **Add permissions**
+7. **⚠️ CRITICAL:** Click **Grant admin consent for [your organization]**
+8. Confirm by clicking **Yes**
 
-1. Access the SharePoint permissions form:  
- https://exampleorganization.sharepoint.com/sites/examplesite/_layouts/15/appinv.aspx
+### Recommended Permission:
+- **Sites.Selected** - Allows access only to specific sites you assign (more secure)
 
-2. Enter the **Application ID** in the corresponding field and click **Lookup**. The application details will load.
+### Alternative Permission:
+- **Sites.ReadWrite.All** - Allows access to all SharePoint sites (easier setup, less secure)
 
-3. In the **App Permission Request XML** field, enter the following XML:
+---
 
+## 4. Assign Permissions to Specific SharePoint Site
+
+**This step is REQUIRED if you chose Sites.Selected in step 3.**
+
+### Option A: Using SharePoint Admin Center (Easiest)
+
+1. Open in browser:
+   ```
+   https://[your-tenant]-admin.sharepoint.com/_layouts/15/appinv.aspx
+   ```
+   Example: `https://sofias219-admin.sharepoint.com/_layouts/15/appinv.aspx`
+
+2. Fill the form:
+   - **App Id**: Paste your Application (client) ID
+   - Click **Lookup** button
+   - **App Domain**: Enter your verified domain (e.g., `Sofias.ai`)
+   - **Redirect URI**: `https://[your-tenant].sharepoint.com` (e.g., `https://sofias219.sharepoint.com`)
+
+3. In **Permission Request XML**, paste:
+   ```xml
+   <AppPermissionRequests AllowAppOnlyPolicy="true">
+     <AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="Write" />
+   </AppPermissionRequests>
+   ```
+
+4. Click **Create**
+5. Click **Trust It** on the confirmation page
+
+✅ **Done!** Your app now has Write access to that specific site.
+
+### Option B: Using Site-specific URL (Alternative)
+
+If you want to assign to a specific site:
+
+1. Open:
+   ```
+   https://[your-tenant].sharepoint.com/sites/[site-name]/_layouts/15/appinv.aspx
+   ```
+   Example: `https://sofias219.sharepoint.com/sites/Clientes/_layouts/15/appinv.aspx`
+
+2. Follow the same steps as Option A
+
+---
+
+## 5. Configure Environment Variables
+
+Create a `.env` file with your saved values:
+
+```env
+SHP_ID_APP=your-application-client-id
+SHP_ID_APP_SECRET=your-client-secret-value
+SHP_TENANT_ID=your-directory-tenant-id
+SHP_SITE_URL=https://your-tenant.sharepoint.com/sites/your-site
+SHP_DOC_LIBRARY=Shared Documents
+```
+
+---
+
+## Permission Scopes Reference
+
+### For Site-specific access (Write):
 ```xml
 <AppPermissionRequests AllowAppOnlyPolicy="true">
-    <AppPermissionRequest Scope="http://sharepoint/content/sitecollection" Right="FullControl"/>
+  <AppPermissionRequest Scope="http://sharepoint/content/sitecollection/web" Right="Write" />
 </AppPermissionRequests>
 ```
->    This XML grants full control over the site collection to the application. Adjust the settings as required based on your organizational needs.
 
-    
+### For Site Collection Full Control:
+```xml
+<AppPermissionRequests AllowAppOnlyPolicy="true">
+  <AppPermissionRequest Scope="http://sharepoint/content/sitecollection" Right="FullControl" />
+</AppPermissionRequests>
+```
 
-4. Click Create or OK to save the permissions.
+### For Tenant-wide access:
+```xml
+<AppPermissionRequests AllowAppOnlyPolicy="true">
+  <AppPermissionRequest Scope="http://sharepoint/content/tenant" Right="Write" />
+</AppPermissionRequests>
+```
 
-5. Upon completion, the application will have access to SharePoint according to the defined permissions, valid until April 2026.
+---
+
+## Troubleshooting
+
+### Error: "Access Denied" (403)
+- Verify admin consent was granted in step 3
+- Check that the app is assigned to the site in step 4
+- Ensure the client secret hasn't expired
+
+### Error: "Invalid Client"
+- Verify `SHP_ID_APP` and `SHP_TENANT_ID` are correct
+- Check that `SHP_ID_APP_SECRET` was copied correctly
+
+### Error: "Site not found"
+- Verify `SHP_SITE_URL` is correct and accessible
+- Check that `SHP_DOC_LIBRARY` exists in the site
+
+---
+
+## Security Best Practices
+
+1. ✅ Use **Sites.Selected** instead of Sites.ReadWrite.All
+2. ✅ Set client secret expiration and rotate regularly
+3. ✅ Grant access only to necessary sites
+4. ✅ Store credentials securely (never commit to git)
+5. ✅ Use separate apps for dev/test/prod environments
